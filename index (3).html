@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>학습 진도표</title>
+<style>
+:root{--bg:#fdf8f1;--card:#fff;--tx:#2b2620;--mu:#8a8076;--bd:#eadfd0;--mom:#e9739b;--g:#3b82c4;--j:#3fa67a;--ac:var(--mom);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#1d1a17;--card:#292520;--tx:#f1ebe3;--mu:#a2988c;--bd:#3b352e}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.5}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 12px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button{flex:1;padding:10px;border:2px solid var(--bd);background:var(--card);color:var(--tx);border-radius:12px;font-size:16px;font-weight:600;cursor:pointer}
+.tabs button.on{color:#fff;border-color:transparent}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:13px;color:var(--mu);margin:8px 0 3px}
+input,select{width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font-size:15px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.add{width:100%;margin-top:12px;padding:11px;border:0;border-radius:10px;background:var(--mom);color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.nav button{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;padding:6px 12px;cursor:pointer}
+.bar{height:10px;background:var(--bd);border-radius:6px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;background:var(--ac);width:0;transition:width .3s}
+.day h3{font-size:14px;margin:0 0 6px;color:var(--mu)}
+.t{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--bd)}
+.t:first-of-type{border-top:0}
+.t input[type=checkbox]{width:22px;height:22px;accent-color:var(--ac);flex:none}
+.t span{flex:1}.t b{font-size:13px;color:var(--ac);margin-right:6px}
+.t.d span{text-decoration:line-through;color:var(--mu)}
+.t button{border:0;background:none;color:var(--mu);font-size:18px;cursor:pointer}
+.tag{font-size:12px;color:#fff;border-radius:6px;padding:1px 6px;margin-right:6px}
+.empty{color:var(--mu);text-align:center;padding:20px}
+.lec{display:grid;grid-template-columns:1fr auto auto;gap:6px 10px;align-items:center;font-size:14px}
+.lec .h{color:var(--mu);font-size:12px}
+.lec .n{display:flex;align-items:center;gap:4px;min-width:0}
+.lec .st{display:flex;align-items:center;gap:4px;justify-content:flex-end;white-space:nowrap}
+.lec .st button{width:26px;height:26px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);border-radius:6px;cursor:pointer}
+.sub{font-size:11px;color:#fff;border-radius:10px;padding:1px 7px;flex:none}
+.today{background:var(--bg);border-radius:10px;padding:8px 10px;margin:8px 0}
+.today .t{border:0;padding:5px 0}
+.pace{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.pace input{width:64px;flex:none;text-align:center}
+.strip{display:flex;gap:6px;margin-bottom:10px}
+.pace button.dl2{flex:none;font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:4px 8px;background:var(--bg);color:var(--mu);cursor:pointer;white-space:nowrap}
+.pace button.dl2.on{background:#d94040;color:#fff;border-color:transparent}
+.t button.dl{font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:4px 9px;color:var(--mu);white-space:nowrap}
+.t button.dl.on{background:#d94040;color:#fff;border-color:transparent}
+.strip button{flex:1;padding:6px 0;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;cursor:pointer;font-size:13px;line-height:1.3}
+.strip button.on{background:var(--ac);color:#fff;border-color:transparent}
+.strip small{display:block;font-size:10px;opacity:.8}
+.add.sec{background:var(--bg);color:var(--tx);border:1px solid var(--bd);font-size:14px;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+<h1>📚 학습 진도표</h1>
+<div class="tabs" id="tabs"></div>
+<div id="view"></div>
+</main>
+<script>
+const KIDS={'유건':'var(--g)','유준':'var(--j)'};
+const COL={'엄마':'var(--mom)',...KIDS};
+let tasks=[],tab='엄마',weekStart=mon(new Date());
+try{tasks=JSON.parse(localStorage.getItem('study-tasks')||'[]')}catch(e){}
+function save(){try{localStorage.setItem('study-tasks',JSON.stringify(tasks))}catch(e){}}
+const SUB={'영어':'#5b4fd6','통합과학':'#d58a0c','통합사회':'#0f9d8a','한국사':'#e0405f'};
+const DEF=[['유건','영어','The 정식',72,0,0],['유건','영어','보카',59,0,0],['유건','통합과학','심화통과1',21,0,0],['유건','통합사회','통사',16,2,1],['유건','한국사','한국사 20강의(기정)',20,0,0],['유준','영어','The 정식 종합 영문법',72,0,2],['유준','영어','정식 보카',59,0,2],['유준','한국사','이다지 한국사 내신 완성',28,0,1],['유준','통합사회','이다지 통합사회 개념완성',19,0,1],['유준','통합과학','장풍 기초통과',20,0,1],['유준','통합과학','장풍 개념통과',38,0,0]];
+let courses=DEF.map((d,i)=>({id:'c'+i,kid:d[0],subj:d[1],name:d[2],total:d[3],done:d[4],per:d[5],log:{}}));
+try{const s=localStorage.getItem('study-courses');if(s)courses=JSON.parse(s)}catch(e){}
+function saveC(){try{localStorage.setItem('study-courses',JSON.stringify(courses))}catch(e){}}
+function mon(d){d=new Date(d);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d}
+function ds(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+const WD=['월','화','수','목','금','토','일'];
+function label(d){return (d.getMonth()+1)+'/'+d.getDate()+' ('+WD[(d.getDay()+6)%7]+')'}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function render(){
+  const tb=document.getElementById('tabs');
+  tb.innerHTML=['엄마','유건','유준'].map(n=>`<button class="${n===tab?'on':''}" style="${n===tab?'background:'+COL[n]:''}" onclick="tab='${n}';render()">${n==='엄마'?'👩 엄마':'🧒 '+n}</button>`).join('');
+  document.documentElement.style.setProperty('--ac',COL[tab]);
+  document.getElementById('view').innerHTML=tab==='엄마'?momView():kidView(tab);
+}
+function weekNav(){
+  const e=addDays(weekStart,6);
+  return `<div class="nav"><button onclick="shift(-7)">◀</button><b>${label(weekStart)} ~ ${label(e)}</b><button onclick="shift(7)">▶</button></div>`;
+}
+function shift(n){weekStart=addDays(weekStart,n);render()}
+function weekTasks(kid){
+  const s=ds(weekStart),e=ds(addDays(weekStart,6));
+  return tasks.filter(t=>(!kid||t.kid===kid)&&t.date>=s&&t.date<=e).sort((a,b)=>a.date.localeCompare(b.date));
+}
+function list(arr,showKid,canDel){
+  if(!arr.length)return '<div class="empty">이번 주 일정이 없어요</div>';
+  let h='',cur='';
+  arr.forEach(t=>{
+    if(t.date!==cur){if(cur)h+='</div>';cur=t.date;h+=`<div class="card day"><h3>${fullLabel(new Date(t.date+'T00:00'))}</h3>`}
+    h+=`<div class="t ${t.done?'d':''}"><input type="checkbox" ${t.done?'checked':''} onchange="toggle('${t.id}')"><span>${showKid?`<span class="tag" style="background:${KIDS[t.kid]}">${t.kid}</span>`:''}<b>${esc(t.subject)}</b>${esc(tt(t))}</span>${canDel?(pend===t.id?`<button class="dl on" onclick="del('${t.id}')">정말 삭제</button>`:`<button class="dl" onclick="del('${t.id}')">삭제</button>`):''}</div>`;
+  });
+  return h+'</div>';
+}
+function kidView(k){
+  const a=weekTasks(k),d=a.filter(t=>t.done).length,p=a.length?Math.round(d/a.length*100):0;
+  return dayCard(k)+courseCard(k)+weekNav()+`<div class="card"><b>${k}의 이번 주 진도 ${p}%</b> <span style="color:var(--mu)">(${d}/${a.length})</span><div class="bar"><i style="width:${p}%"></i></div></div>`+list(a,false,false);
+}
+function momView(){
+  const a=weekTasks(null);
+  const sum=Object.keys(KIDS).map(k=>{const x=a.filter(t=>t.kid===k),d=x.filter(t=>t.done).length;return `<span class="tag" style="background:${KIDS[k]}">${k}</span>${d}/${x.length} 완료`}).join(' &nbsp; ');
+  return `<div class="card"><b>일정 추가</b>
+  <label>누구</label><select id="kid"><option>유건</option><option>유준</option><option value="both">둘 다</option></select>
+  <div class="row"><div><label>날짜</label><input type="date" id="date" value="${ds(new Date())}"></div><div><label>매주 반복 (횟수)</label><select id="rep">${[1,2,3,4,6,8].map(n=>`<option>${n}</option>`).join('')}</select></div></div>
+  <label>과목 / 학습지</label><input id="subj" placeholder="예: 수학, 국어, 영어">
+  <label>내용 / 분량</label><input id="text" placeholder="예: 3단원 p.20~25">
+  <button class="add" onclick="addTask()">추가하기</button></div>
+  ${weekNav()}<div class="card" style="font-size:14px">${sum}</div>`+list(a,true,true)+paceCard();
+}
+function addTask(){
+  const kid=document.getElementById('kid').value,date=document.getElementById('date').value,
+  subj=document.getElementById('subj').value.trim(),text=document.getElementById('text').value.trim(),
+  rep=+document.getElementById('rep').value;
+  if(!date||!(subj||text)){alert('날짜와 과목/내용을 입력해 주세요');return}
+  const kids=kid==='both'?Object.keys(KIDS):[kid];
+  for(let i=0;i<rep;i++){const d=ds(addDays(new Date(date+'T00:00'),i*7));
+    kids.forEach(k=>tasks.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),kid:k,date:d,subject:subj,text:text,done:false}))}
+  save();weekStart=mon(new Date(date+'T00:00'));render();
+}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function toggle(id){const t=tasks.find(x=>x.id===id);if(!t)return;t.done=!t.done;if(t.cid){const c=courses.find(x=>x.id===t.cid);if(c){c.done=Math.min(c.total,Math.max(0,c.done+(t.done?t.n:-t.n)));saveC()}}save();render()}
+function del(id){const t=tasks.find(x=>x.id===id);if(!t)return;if(pend!==id){pend=id;render();return}pend=null;if(t.done&&t.cid){const c=courses.find(x=>x.id===t.cid);if(c){c.done=Math.max(0,c.done-t.n);saveC()}}tasks=tasks.filter(x=>x.id!==id);save();render()}
+let momDate=ds(new Date()),pend=null,kidDate=ds(new Date());
+function fullLabel(d){return (d.getMonth()+1)+'월 '+d.getDate()+'일 '+WD[(d.getDay()+6)%7]+'요일'}
+function kidView(k){return dayCard(k)+courseCard(k)}
+function tt(t){
+  if(!t.cid)return t.text;const c=courses.find(x=>x.id===t.cid);if(!c)return t.text;
+  const arr=tasks.filter(x=>x.cid===t.cid).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:tasks.indexOf(a)-tasks.indexOf(b));
+  const base=Math.max(0,c.done-arr.filter(x=>x.done).reduce((s,x)=>s+x.n,0));let s=base;
+  for(const x of arr){if(x===t)break;s+=x.n}
+  const a=s+1,b=Math.min(s+t.n,c.total);return c.name+' '+(b<=a?a+'강':a+'~'+b+'강');
+}
+function kidShift(n){kidDate=ds(addDays(new Date(kidDate+'T00:00'),n));render()}
+function dayCard(k){
+  const d=new Date(kidDate+'T00:00'),a=tasks.filter(t=>t.kid===k&&t.date===kidDate),dn=a.filter(t=>t.done).length,p=a.length?Math.round(dn/a.length*100):0,isT=kidDate===ds(new Date());
+  const strip=WD.map((w,i)=>{const x=addDays(mon(d),i),s=ds(x),n=tasks.filter(t=>t.kid===k&&t.date===s).length;return `<button class="${s===kidDate?'on':''}" onclick="kidDate='${s}';render()">${w}<br>${x.getDate()}<small>${n?'● '+n:'&nbsp;'}</small></button>`}).join('');
+  return `<div class="nav"><button onclick="kidShift(-1)">◀</button><b>📅 ${isT?'오늘 · ':''}${fullLabel(d)}</b><button onclick="kidShift(1)">▶</button></div><div class="strip">${strip}</div>`
+  +(a.length?`<div class="card"><b>${k}의 일일 스케줄</b> <span style="color:var(--mu);font-size:13px">${dn}/${a.length} · ${p}%</span><div class="bar"><i style="width:${p}%"></i></div></div>`+list(a,false,false):'<div class="card empty">이 날 일정이 없어요</div>')
+  +(isT?'':`<button class="add sec" style="margin:0 0 12px" onclick="kidDate=ds(new Date());render()">오늘로 돌아가기</button>`);
+}
+Object.assign(SUB,{'수학':'#2f80ed','국어':'#c2410c','기타':'#6b7280'});
+function gv(i){return document.getElementById(i).value}
+function delCourse(id){const k='course:'+id;if(pend!==k){pend=k;render();return}pend=null;tasks=tasks.filter(t=>t.cid!==id);courses=courses.filter(c=>c.id!==id);save();saveC();render()}
+function addCourse(){const name=gv('nn').trim(),total=parseInt(gv('nt'))||0;if(!name||total<1){alert('교재 이름과 총 강수를 입력해 주세요');return}courses.push({id:'c'+uid(),kid:gv('nk'),subj:gv('ns'),name:name,total:total,done:0,per:Math.max(0,parseInt(gv('np'))||0),log:{}});saveC();render()}
+window.alert=m=>{let e=document.getElementById('toast');if(!e){e=document.createElement('div');e.id='toast';e.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:10px;z-index:9;font-size:14px';document.body.appendChild(e)}e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',2500)};
+function clearDay(){if(pend!=='day'){pend='day';render();return}pend=null;tasks.filter(t=>t.date===momDate&&t.done&&t.cid).forEach(t=>{const c=courses.find(x=>x.id===t.cid);if(c)c.done=Math.max(0,c.done-t.n)});tasks=tasks.filter(t=>t.date!==momDate);save();saveC();render()}
+function momShift(n){momDate=ds(addDays(new Date(momDate+'T00:00'),n));render()}
+function momView(){
+  const d=new Date(momDate+'T00:00'),day=tasks.filter(t=>t.date===momDate);
+  const strip=WD.map((w,i)=>{const x=addDays(mon(d),i),s=ds(x),n=tasks.filter(t=>t.date===s).length;return `<button class="${s===momDate?'on':''}" onclick="momDate='${s}';render()">${w}<br>${x.getDate()}<small>${n?'● '+n:'&nbsp;'}</small></button>`}).join('');
+  const opt=courses.map(c=>`<option value="${c.id}">${c.kid} · ${esc(c.name)}</option>`).join('');
+  return `<div class="nav"><button onclick="momShift(-1)">◀</button><input type="date" value="${momDate}" style="width:auto" onchange="if(this.value){momDate=this.value;render()}"><button onclick="momShift(1)">▶</button></div><div class="strip">${strip}</div>`
+  +(day.length?list(day,true,true)+`<button class="add sec" style="margin:0 0 12px;${pend==='day'?'background:#d94040;color:#fff;border-color:transparent':''}" onclick="clearDay()">${pend==='day'?'정말 이 날 전체 삭제? 한 번 더 누르세요':'이 날 일정 전체 삭제'}</button>`:'<div class="card empty">이 날 일정이 없어요. 아래에서 추가해 주세요</div>')
+  +`<div class="card"><b>🎧 인강 일정 넣기</b><label>교재</label><select id="cid" onchange="document.getElementById('cn').value=Math.max(1,courses.find(c=>c.id===this.value).per)">${opt}</select><label>들을 강수</label><input type="number" id="cn" min="1" value="${courses.length?Math.max(1,courses[0].per):1}"><button class="add" onclick="addLec()">이 날 인강 추가</button></div>`
+  
+  +paceCard();
+}
+function addLec(){const c=courses.find(x=>x.id===document.getElementById('cid').value),n=Math.max(1,parseInt(document.getElementById('cn').value)||1);if(!c)return;tasks.push({id:uid(),kid:c.kid,date:momDate,subject:'인강',text:c.name+' '+n+'강',cid:c.id,n:n,done:false});save();render()}
+function fillDays(days){let a=0;days.forEach(s=>courses.forEach(c=>{if(c.per<=0||tasks.some(t=>t.date===s&&t.cid===c.id))return;const pend=tasks.filter(t=>t.cid===c.id&&!t.done).reduce((x,t)=>x+t.n,0),n=Math.min(c.per,c.total-c.done-pend);if(n>0){tasks.push({id:uid(),kid:c.kid,date:s,subject:'인강',text:c.name+' '+n+'강',cid:c.id,n:n,done:false});a++}}));if(!a)alert('추가할 인강이 없어요 (이미 들어있거나 기본 분량이 0이에요)');save();render()}
+function fillWeek(){fillDays([0,1,2,3,4].map(i=>ds(addDays(mon(new Date(momDate+'T00:00')),i))))}
+function addTask2(){const kid=document.getElementById('kid').value,subj=document.getElementById('subj').value.trim(),text=document.getElementById('text').value.trim(),rep=+document.getElementById('rep').value;if(!(subj||text)){alert('과목이나 내용을 입력해 주세요');return}const kids=kid==='both'?Object.keys(KIDS):[kid];for(let i=0;i<rep;i++){const d=ds(addDays(new Date(momDate+'T00:00'),i*7));kids.forEach(k=>tasks.push({id:uid(),kid:k,date:d,subject:subj,text:text,done:false}))}save();render()}
+
+function courseCard(k){
+  const cs=courses.filter(c=>c.kid===k),T=cs.reduce((a,c)=>a+c.total,0),D=cs.reduce((a,c)=>a+c.done,0),p=T?Math.round(D/T*100):0,td=ds(new Date());
+  const tc=[];
+  const todayH=tc.length?`<div class="today"><b style="font-size:14px">🎧 오늘 들을 인강</b>`+tc.map(c=>`<div class="t ${c.log[td]?'d':''}"><input type="checkbox" ${c.log[td]?'checked':''} onchange="toggleLec('${c.id}')"><span><span class="sub" style="background:${SUB[c.subj]||'#888'}">${c.subj}</span> ${esc(c.name)} · ${c.per}강</span></div>`).join('')+`</div>`:'';
+  const rows=cs.map(c=>{const left=c.total-c.done,days=c.per>0?Math.ceil(left/c.per):0;return `<div class="n"><span class="sub" style="background:${SUB[c.subj]||'#888'}">${c.subj}</span><span>${esc(c.name)}</span></div><div class="st">${c.done}/${c.total}<button onclick="bump('${c.id}',-1)">−</button><button onclick="bump('${c.id}',1)">+</button></div><div class="st" style="color:var(--mu);font-size:12px">${left<=0?'완료 🎉':c.per>0?days+'일 남음':'-'}</div>`}).join('');
+  return `<div class="card"><div style="display:flex;justify-content:space-between"><b>🎧 ${k} 인강</b><span style="color:var(--mu);font-size:13px">${D} / ${T}강 · ${p}%</span></div><div class="bar"><i style="width:${p}%"></i></div>${todayH}<div class="lec"><div class="h">교재</div><div class="h st">진도</div><div class="h st">예상</div>${rows}</div></div>`;
+}
+function toggleLec(id){const c=courses.find(x=>x.id===id),td=ds(new Date());if(!c)return;
+  if(c.log[td]){c.done=Math.max(0,c.done-c.log[td]);delete c.log[td]}else{const a=Math.min(c.per,c.total-c.done);c.done+=a;c.log[td]=a}
+  saveC();render()}
+function bump(id,n){const c=courses.find(x=>x.id===id);if(c){c.done=Math.min(c.total,Math.max(0,c.done+n));saveC();render()}}
+function setPer(id,v){const c=courses.find(x=>x.id===id);if(c){c.per=Math.max(0,parseInt(v)||0);saveC();render()}}
+function paceCard(){
+  return `<div class="card"><b>🎧 인강 기본 분량 (하루)</b><div style="font-size:13px;color:var(--mu)">'기본 분량으로 채우기' 버튼에 쓰이는 값이에요</div>`+Object.keys(KIDS).map(k=>`<label style="color:${KIDS[k]};font-weight:700">${k}</label>`+courses.filter(c=>c.kid===k).map(c=>`<div class="pace"><span class="sub" style="background:${SUB[c.subj]||'#888'}">${c.subj}</span><span style="flex:1">${esc(c.name)} <span style="color:var(--mu)">(${c.done}/${c.total})</span></span><input type="number" min="0" value="${c.per}" onchange="setPer('${c.id}',this.value)">강<button class="dl2 ${pend==='course:'+c.id?'on':''}" onclick="delCourse('${c.id}')">${pend==='course:'+c.id?'정말 삭제':'삭제'}</button></div>`).join('')).join('')+`<div style="border-top:1px solid var(--bd);margin-top:12px;padding-top:8px"><b>➕ 인강 과목 추가</b><div class="row"><div><label>누구</label><select id="nk"><option>유건</option><option>유준</option></select></div><div><label>과목</label><select id="ns"><option>영어</option><option>통합과학</option><option>통합사회</option><option>한국사</option><option>수학</option><option>국어</option><option>기타</option></select></div></div><label>교재 이름</label><input id="nn" placeholder="예: 개념원리 수학"><div class="row"><div><label>총 강수</label><input type="number" id="nt" min="1" placeholder="30"></div><div><label>하루 분량</label><input type="number" id="np" min="0" value="1"></div></div><button class="add" onclick="addCourse()">과목 추가</button><div style="font-size:12px;color:var(--mu);margin-top:6px">과목을 삭제하면 그 교재로 넣어 둔 인강 일정도 함께 삭제돼요</div></div></div>`;
+}
+render();
+</script>
+</body>
+</html>
