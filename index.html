@@ -65,12 +65,41 @@ const KIDS={'유건':'var(--g)','유준':'var(--j)'};
 const COL={'엄마':'var(--mom)',...KIDS};
 let tasks=[],tab='엄마',weekStart=mon(new Date());
 try{tasks=JSON.parse(localStorage.getItem('study-tasks')||'[]')}catch(e){}
-function save(){try{localStorage.setItem('study-tasks',JSON.stringify(tasks))}catch(e){}}
+function save(){try{localStorage.setItem('study-tasks',JSON.stringify(tasks))}catch(e){};sync()}
 const SUB={'영어':'#5b4fd6','통합과학':'#d58a0c','통합사회':'#0f9d8a','한국사':'#e0405f'};
 const DEF=[['유건','영어','The 정식',72,0,0],['유건','영어','보카',59,0,0],['유건','통합과학','심화통과1',21,0,0],['유건','통합사회','통사',16,2,1],['유건','한국사','한국사 20강의(기정)',20,0,0],['유준','영어','The 정식 종합 영문법',72,0,2],['유준','영어','정식 보카',59,0,2],['유준','한국사','이다지 한국사 내신 완성',28,0,1],['유준','통합사회','이다지 통합사회 개념완성',19,0,1],['유준','통합과학','장풍 기초통과',20,0,1],['유준','통합과학','장풍 개념통과',38,0,0]];
 let courses=DEF.map((d,i)=>({id:'c'+i,kid:d[0],subj:d[1],name:d[2],total:d[3],done:d[4],per:d[5],log:{}}));
 try{const s=localStorage.getItem('study-courses');if(s)courses=JSON.parse(s)}catch(e){}
-function saveC(){try{localStorage.setItem('study-courses',JSON.stringify(courses))}catch(e){}}
+function saveC(){try{localStorage.setItem('study-courses',JSON.stringify(courses))}catch(e){};sync()}
+
+const DB='https://study-check-bbbd6-default-rtdb.firebaseio.com';
+let snap={},busy=0;
+function flat(){const o={};tasks.forEach(t=>o['tasks/'+t.id]=t);courses.forEach(c=>o['courses/'+c.id]=c);return o}
+function sync(){
+  if(!DB)return;
+  const cur=flat(),ch={};
+  for(const k in cur){const j=JSON.stringify(cur[k]);if(snap[k]!==j){ch[k]=cur[k];snap[k]=j}}
+  for(const k in snap){if(!(k in cur)){ch[k]=null;delete snap[k]}}
+  if(!Object.keys(ch).length)return;
+  busy++;
+  fetch(DB+'/state.json',{method:'PATCH',body:JSON.stringify(ch)}).catch(()=>{}).finally(()=>{busy--});
+}
+async function pull(){
+  if(!DB||busy)return;
+  try{
+    const r=await fetch(DB+'/state.json');if(!r.ok)return;
+    const d=await r.json();if(busy)return;
+    if(d===null){snap={};sync();return}
+    const nt=Object.values(d.tasks||{}),nc=Object.values(d.courses||{}),ns={};
+    nt.forEach(t=>ns['tasks/'+t.id]=JSON.stringify(t));
+    nc.forEach(c=>ns['courses/'+c.id]=JSON.stringify(c));
+    const ks=Object.keys(ns);
+    if(ks.length===Object.keys(snap).length&&ks.every(k=>snap[k]===ns[k]))return;
+    tasks=nt;courses=nc;snap=ns;save();saveC();
+    const a=document.activeElement;if(a&&/INPUT|SELECT/.test(a.tagName))return;
+    render();
+  }catch(e){}
+}
 function mon(d){d=new Date(d);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d}
 function ds(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
@@ -184,7 +213,7 @@ function setPer(id,v){const c=courses.find(x=>x.id===id);if(c){c.per=Math.max(0,
 function paceCard(){
   return `<div class="card"><b>🎧 인강 기본 분량 (하루)</b><div style="font-size:13px;color:var(--mu)">'기본 분량으로 채우기' 버튼에 쓰이는 값이에요</div>`+Object.keys(KIDS).map(k=>`<label style="color:${KIDS[k]};font-weight:700">${k}</label>`+courses.filter(c=>c.kid===k).map(c=>`<div class="pace"><span class="sub" style="background:${SUB[c.subj]||'#888'}">${c.subj}</span><span style="flex:1">${esc(c.name)} <span style="color:var(--mu)">(${c.done}/${c.total})</span></span><input type="number" min="0" value="${c.per}" onchange="setPer('${c.id}',this.value)">강<button class="dl2 ${pend==='course:'+c.id?'on':''}" onclick="delCourse('${c.id}')">${pend==='course:'+c.id?'정말 삭제':'삭제'}</button></div>`).join('')).join('')+`<div style="border-top:1px solid var(--bd);margin-top:12px;padding-top:8px"><b>➕ 인강 과목 추가</b><div class="row"><div><label>누구</label><select id="nk"><option>유건</option><option>유준</option></select></div><div><label>과목</label><select id="ns"><option>영어</option><option>통합과학</option><option>통합사회</option><option>한국사</option><option>수학</option><option>국어</option><option>기타</option></select></div></div><label>교재 이름</label><input id="nn" placeholder="예: 개념원리 수학"><div class="row"><div><label>총 강수</label><input type="number" id="nt" min="1" placeholder="30"></div><div><label>하루 분량</label><input type="number" id="np" min="0" value="1"></div></div><button class="add" onclick="addCourse()">과목 추가</button><div style="font-size:12px;color:var(--mu);margin-top:6px">과목을 삭제하면 그 교재로 넣어 둔 인강 일정도 함께 삭제돼요</div></div></div>`;
 }
-render();
+render();pull();setInterval(pull,8000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
 </script>
 </body>
 </html>
